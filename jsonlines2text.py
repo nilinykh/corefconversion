@@ -1,27 +1,9 @@
-"""Script to convert from a jsonlines file to a text representation of
-coreference annotation.  The output is html.  Mentions are surrounded by
-brackets.  Coreference chains are represented by colors (each chain has
-a specific color) and, if requested by a switch, an index (1, 2, 3...).
-Singletons may be hidden or shown in a specific color (gray by default),
-without any index.
-
-If your jsonlines file contains several documents, you may show the
-document name by using the `--heading` option.
-
-Here is a minimal example:
-
-    python3 jsonlines2text.py testing/docs.jsonlines -o output.html
-
-Use the `-h` and `--help` switches to get a detailed list of options.
-"""
-
-
 import argparse
 import json
-
+import pandas as pd
+import re
 from standoff2inline import Highlighter, highlight
 from color_manager import ColorManager, CommonColorManager
-
 
 
 def sort_mentions(clusters):
@@ -33,13 +15,10 @@ def sort_mentions(clusters):
     return res
 
 
-
 def sort_clusters(clusters):
     clusters = sorted(clusters, key=lambda x: x[0][1], reverse=True)
     clusters = sorted(clusters, key=lambda x: x[0][0])
     return clusters
-
-
 
 
 def highlight_clusters(tokens, clusters, paragraphs, *, singleton_color,
@@ -76,14 +55,14 @@ def highlight_clusters(tokens, clusters, paragraphs, *, singleton_color,
             else:
                 color = (cm.gray if cm else 'gray') \
                     if singleton_color is None else singleton_color
-                start_span = f'<span style="color: {color};">'
+                start_span = f'<span style="background-color: {color};">'
                 end_span = "</span>"
                 hl = Highlighter(
                     prefix=f'{start_span}[{end_span}',
                     suffix=f'{start_span}]{end_span}')
         else:
             color = cm.get_next_color() if cm else "black"
-            start_span = f'<span style="color: {color};">'
+            start_span = f'<span style="background-color: {color};">'
             end_span = "</span>"
             index = f"<sub>{counter}</sub>{end_span}" if add_indices else ""
             hl = Highlighter(
@@ -102,9 +81,6 @@ def highlight_clusters(tokens, clusters, paragraphs, *, singleton_color,
     return res
 
 
-
-
-
 def filter_tokens(tokens, clusters, n):
     tokens = tokens[:n]
     new_clusters = []
@@ -116,7 +92,6 @@ def filter_tokens(tokens, clusters, n):
         if new_cluster:
             new_clusters.append(new_cluster)
     return tokens, new_clusters
-
 
 
 def convert(doc, gold, n, **kwargs):
@@ -132,17 +107,12 @@ def convert(doc, gold, n, **kwargs):
     return res
 
 
-
 def parse_args():
     # definition
     parser = argparse.ArgumentParser(prog="jsonlines2text",
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter)
-    # arguments (not options)
-    #parser.add_argument("infpaths", nargs="+", help="input files")
     parser.add_argument("infpath", default="", help="input file")
-    #parser.add_argument("outfpath", default="", help="output file")
-    # options
     parser.add_argument("-o", dest="outfpath", help="output file")
     parser.add_argument("--cm", "--color-manager", dest="color_manager",
         default="complete",
@@ -162,33 +132,47 @@ def parse_args():
     parser.add_argument("--heading", dest="heading", default="<h1>%s</h1>",
         help="template for text name, default is '<h1>%s</h1>'.  Leave "
         "blank to ignore doc name")
+    parser.add_argument("--csv", dest="csv_out", help="Path to output CSV file for sentence segmentation.")
     # reading
     args = parser.parse_args()
     return args
 
 
-
 def main():
     args = parse_args()
+    sentence_list = []
     res = ""
+
     for line in open(args.infpath):
         doc = json.loads(line)
+        doc_id = doc['doc_key']
+        
         if args.heading:
             if "%s" in args.heading:
                 res += args.heading % doc['doc_key']
             else:
                 res += args.heading
-        res += convert(doc, n=args.n, gold=args.gold,
-            singleton_color=args.singleton_color,
-            color_manager=args.color_manager, add_indices=args.add_indices
-        )
-    if args.outfpath:
-        open(args.outfpath, 'w').write(res)
-    else:
-        print(res)
 
+            res += convert(doc, n=args.n, gold=args.gold,
+                singleton_color=args.singleton_color,
+                color_manager=args.color_manager, add_indices=args.add_indices
+            )
+
+        sentences = re.split(r'\s*\.\s*', res.strip())
+        sentences = [sentence for sentence in sentences if sentence]
+
+        for sentence in sentences:
+            sentence_list.append((sentence, doc_id))
+
+    df = pd.DataFrame(sentence_list, columns=['sentence', 'doc_id'])
+    if args.csv_out:
+        df.to_csv(args.csv_out, index=False)
+    else:
+        print(df)
+    if args.outfpath:
+        with open(args.outfpath, 'w') as f:
+            f.write(res)
 
 
 if __name__ == '__main__':
     main()
-

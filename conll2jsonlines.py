@@ -148,8 +148,8 @@ def parse_args():
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter)
     # arguments (not options)
-    parser.add_argument("input_fpath", default="", help="input file")
-    parser.add_argument("output_fpath", default="", help="output file")
+    parser.add_argument("--input_fpath", default="", help="input file")
+    parser.add_argument("--output_fpath", default="", help="output file")
     # options
     parser.add_argument("--skip-singletons", dest="skip_singletons",
         default=False, action="store_true", help="skip singletons")
