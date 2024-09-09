@@ -142,28 +142,23 @@ def main():
     args = parse_args()
     sentence_list = []
     res = ""
-
     for line in open(args.infpath):
         doc = json.loads(line)
         doc_id = doc['doc_key']
-        
         if args.heading:
             if "%s" in args.heading:
                 res += args.heading % doc['doc_key']
             else:
                 res += args.heading
-
-            res += convert(doc, n=args.n, gold=args.gold,
-                singleton_color=args.singleton_color,
-                color_manager=args.color_manager, add_indices=args.add_indices
-            )
-
+        res = convert(doc, n=args.n, gold=args.gold,
+            singleton_color=args.singleton_color,
+            color_manager=args.color_manager, add_indices=args.add_indices
+        )
         sentences = re.split(r'\s*\.\s*', res.strip())
         sentences = [sentence for sentence in sentences if sentence]
 
         for sentence in sentences:
             sentence_list.append((sentence, doc_id))
-
     df = pd.DataFrame(sentence_list, columns=['sentence', 'doc_id'])
     if args.csv_out:
         df.to_csv(args.csv_out, index=False)
@@ -172,7 +167,7 @@ def main():
     if args.outfpath:
         with open(args.outfpath, 'w') as f:
             f.write(res)
-
+        
 
 if __name__ == '__main__':
     main()
