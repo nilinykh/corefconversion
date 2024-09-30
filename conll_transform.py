@@ -85,7 +85,7 @@ def read_file(fpath, sep=None, ignore_double_indices=False,
                 sentences.append([])
             new_sentence = False
             split = line[:-1].split(sep)
-            if isinstance(ignore_double_indices, int) and \
+            if type(ignore_double_indices) is int and \
                     ignore_double_indices >= 0 and "-" in split[ignore_double_indices]:
                 continue
             sentences[-1].append(split)
