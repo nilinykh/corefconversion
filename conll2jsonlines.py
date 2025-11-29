@@ -78,6 +78,13 @@ def conll2jsonlines(
     with open(outfpath, 'w') as fh:
 
         for doc_key, doc in docs.items():
+            
+            # Simplify doc_key: extract just the number after "doc_"
+            # e.g., "doc_2926_claude45_large_seed42_59" -> "2926"
+            if doc_key.startswith("doc_"):
+                parts = doc_key.split("_")
+                if len(parts) > 1 and parts[1].isdigit():
+                    doc_key = parts[1]
 
             print("Doing %s" % doc_key)
 
